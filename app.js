@@ -71,44 +71,55 @@ async function startScanner() {
 	try {
 		statusText.textContent = 'カメラ起動中...'
 
-		if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-			statusText.textContent = 'このブラウザはカメラに対応していません'
-			return
-		}
-
-		if (!window.ZXingBrowser) {
-			statusText.textContent = 'ZXingが読み込めていません'
+		if (!('BarcodeDetector' in window)) {
+			statusText.textContent = 'このブラウザはBarcodeDetectorに対応していません'
 			return
 		}
 
 		stopScanner()
 
-		codeReader = new ZXingBrowser.BrowserMultiFormatReader()
+		currentStream = await navigator.mediaDevices.getUserMedia({
+			video: {
+				facingMode: { ideal: 'environment' },
+				width: { ideal: 1280 },
+				height: { ideal: 720 },
+			},
+			audio: false,
+		})
 
-		const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices()
-
-		if (!devices || devices.length === 0) {
-			statusText.textContent = 'カメラが見つかりません'
-			return
-		}
-
-		const backCamera = devices.find((device) => device.label.toLowerCase().includes('back') || device.label.toLowerCase().includes('rear') || device.label.toLowerCase().includes('environment'))
-
-		const selectedDeviceId = backCamera ? backCamera.deviceId : devices[devices.length - 1].deviceId
+		video.srcObject = currentStream
+		await video.play()
 
 		statusText.textContent = '読み取り中... バーコードを中央に映してください'
 
-		codeReader.decodeFromVideoDevice(selectedDeviceId, video, async (result, error) => {
-			if (result) {
-				const barcode = result.getText()
-
-				statusText.textContent = `読み取り成功：${barcode}`
-
-				stopScanner()
-
-				await fetchProduct(barcode)
-			}
+		const barcodeDetector = new BarcodeDetector({
+			formats: ['ean_13', 'ean_8', 'code_128', 'qr_code'],
 		})
+
+		const scanLoop = async () => {
+			if (!currentStream) return
+
+			try {
+				const barcodes = await barcodeDetector.detect(video)
+
+				if (barcodes.length > 0) {
+					const barcode = barcodes[0].rawValue
+
+					statusText.textContent = `読み取り成功：${barcode}`
+
+					stopScanner()
+
+					await fetchProduct(barcode)
+					return
+				}
+			} catch (error) {
+				console.error(error)
+			}
+
+			requestAnimationFrame(scanLoop)
+		}
+
+		scanLoop()
 	} catch (error) {
 		console.error(error)
 		statusText.textContent = `エラー：${error.name} / ${error.message}`
