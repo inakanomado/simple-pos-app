@@ -76,6 +76,27 @@ async function startScanner() {
 	}
 }
 
+function stopScanner() {
+	if (codeReader) {
+		try {
+			codeReader.reset()
+		} catch (error) {
+			console.log(error)
+		}
+
+		codeReader = null
+	}
+
+	if (currentStream) {
+		currentStream.getTracks().forEach((track) => track.stop())
+		currentStream = null
+	}
+
+	if (video) {
+		video.srcObject = null
+	}
+}
+
 async function startScanner() {
 	try {
 		statusText.textContent = 'カメラ起動中...'
