@@ -29,12 +29,27 @@ body {
 	background: #222;
 	color: #fff;
 	font-size: 16px;
+	margin-bottom: 10px;
+  }
+  
+  .sub-btn {
+	background: #777;
+  }
+  
+  input {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 14px;
+	border: 1px solid #ccc;
+	border-radius: 8px;
+	font-size: 16px;
+	margin-bottom: 10px;
   }
   
   video {
 	width: 100%;
 	min-height: 240px;
-	margin-top: 16px;
+	margin-top: 10px;
 	background: #000;
 	border-radius: 8px;
   }
@@ -44,6 +59,7 @@ body {
 	background: #fff;
 	border-radius: 8px;
 	font-weight: bold;
+	line-height: 1.5;
   }
   
   .box {

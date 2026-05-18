@@ -4,21 +4,27 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 	<title>簡易POS</title>
-
-	<link rel="stylesheet" href="style.css?v=4">
+	<link rel="stylesheet" href="style.css?v=5">
 </head>
 
 <body>
 	<div class="app">
 		<h1>簡易POS</h1>
 
+		<button id="gasTestBtn">GAS接続テスト</button>
 		<button id="scanBtn">スキャン開始</button>
+		<button id="stopBtn" class="sub-btn">カメラ停止</button>
 
 		<video id="video" autoplay muted playsinline></video>
 
 		<p id="status">未読み取り</p>
+
+		<section id="manualArea" class="box">
+			<h2>手入力検索</h2>
+			<input id="manualBarcode" type="text" placeholder="バーコード番号を入力">
+			<button id="manualSearchBtn">手入力で検索</button>
+		</section>
 
 		<section id="productArea" class="box">
 			<p>商品を読み取ってください</p>
@@ -31,7 +37,7 @@
 	</div>
 
 	<script src="https://unpkg.com/@zxing/browser@latest"></script>
-	<script src="app.js?v=4"></script>
+	<script src="app.js?v=5"></script>
 </body>
 
 </html>

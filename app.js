@@ -1,27 +1,27 @@
 const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbx1n6HDvtriCGbXZXYCJW7eUMDkO9Uex3VRXMUPq_sNo_cRpQn5m5rT1p9cputdhAWQ/exec'
 
+const gasTestBtn = document.getElementById('gasTestBtn')
 const scanBtn = document.getElementById('scanBtn')
+const stopBtn = document.getElementById('stopBtn')
 const video = document.getElementById('video')
 const statusText = document.getElementById('status')
 const productArea = document.getElementById('productArea')
+const manualBarcode = document.getElementById('manualBarcode')
+const manualSearchBtn = document.getElementById('manualSearchBtn')
 
 let codeReader = null
 let currentStream = null
 
 window.addEventListener('load', () => {
-	console.log('app.js loaded')
-
-	if (!scanBtn) {
-		alert('scanBtnが見つかりません')
-		return
-	}
-
-	if (!statusText) {
-		alert('statusが見つかりません')
-		return
-	}
-
 	statusText.textContent = '準備完了'
+
+	if (!window.ZXingBrowser) {
+		statusText.textContent = 'ZXingが読み込めていません'
+	}
+})
+
+gasTestBtn.addEventListener('click', async () => {
+	await testGasConnection()
 })
 
 scanBtn.addEventListener('click', async () => {
@@ -29,71 +29,41 @@ scanBtn.addEventListener('click', async () => {
 	await startScanner()
 })
 
-async function startScanner() {
+stopBtn.addEventListener('click', () => {
+	stopScanner()
+	statusText.textContent = 'カメラを停止しました'
+})
+
+manualSearchBtn.addEventListener('click', async () => {
+	const barcode = manualBarcode.value.trim()
+
+	if (!barcode) {
+		statusText.textContent = 'バーコード番号を入力してください'
+		return
+	}
+
+	statusText.textContent = `手入力検索：${barcode}`
+	await fetchProduct(barcode)
+})
+
+async function testGasConnection() {
 	try {
-		statusText.textContent = 'カメラ起動中...'
+		statusText.textContent = 'GAS接続テスト中...'
 
-		if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-			statusText.textContent = 'このブラウザはカメラに対応していません'
-			return
+		const url = `${GAS_API_URL}?action=ping`
+		const res = await fetch(url)
+		const data = await res.json()
+
+		console.log('GAS TEST:', data)
+
+		if (data.success) {
+			statusText.textContent = `GAS接続OK：${data.message}`
+		} else {
+			statusText.textContent = 'GAS接続はできましたが、レスポンスが不正です'
 		}
-
-		if (!window.ZXingBrowser) {
-			statusText.textContent = 'ZXingが読み込めていません'
-			return
-		}
-
-		stopScanner()
-
-		currentStream = await navigator.mediaDevices.getUserMedia({
-			video: {
-				facingMode: { ideal: 'environment' },
-			},
-			audio: false,
-		})
-
-		video.srcObject = currentStream
-		await video.play()
-
-		statusText.textContent = '読み取り中...'
-
-		codeReader = new ZXingBrowser.BrowserMultiFormatReader()
-
-		codeReader.decodeFromVideoElement(video, async (result, error) => {
-			if (result) {
-				const barcode = result.getText()
-
-				statusText.textContent = `読み取り成功：${barcode}`
-
-				stopScanner()
-
-				await fetchProduct(barcode)
-			}
-		})
 	} catch (error) {
 		console.error(error)
-		statusText.textContent = `エラー：${error.name} / ${error.message}`
-	}
-}
-
-function stopScanner() {
-	if (codeReader) {
-		try {
-			codeReader.reset()
-		} catch (error) {
-			console.log(error)
-		}
-
-		codeReader = null
-	}
-
-	if (currentStream) {
-		currentStream.getTracks().forEach((track) => track.stop())
-		currentStream = null
-	}
-
-	if (video) {
-		video.srcObject = null
+		statusText.textContent = `GAS接続エラー：${error.name} / ${error.message}`
 	}
 }
 
@@ -146,16 +116,36 @@ async function startScanner() {
 	}
 }
 
+function stopScanner() {
+	if (codeReader) {
+		try {
+			codeReader.reset()
+		} catch (error) {
+			console.log(error)
+		}
+
+		codeReader = null
+	}
+
+	if (currentStream) {
+		currentStream.getTracks().forEach((track) => track.stop())
+		currentStream = null
+	}
+
+	if (video) {
+		video.srcObject = null
+	}
+}
+
 async function fetchProduct(barcode) {
 	try {
 		productArea.innerHTML = '<p>商品検索中...</p>'
 
 		const url = `${GAS_API_URL}?action=getProduct&barcode=${encodeURIComponent(barcode)}`
-
 		const res = await fetch(url)
 		const product = await res.json()
 
-		console.log(product)
+		console.log('PRODUCT:', product)
 
 		if (!product || product.error) {
 			productArea.innerHTML = `
@@ -177,7 +167,7 @@ async function fetchProduct(barcode) {
 
 		productArea.innerHTML = `
       <p>商品取得エラー</p>
-      <p>${error.message}</p>
+      <p>${error.name} / ${error.message}</p>
     `
 	}
 }
