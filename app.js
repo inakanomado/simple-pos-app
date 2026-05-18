@@ -11,13 +11,11 @@ const manualSearchBtn = document.getElementById('manualSearchBtn')
 
 let codeReader = null
 let currentStream = null
+let scanLoopId = null
+let isScanning = false
 
 window.addEventListener('load', () => {
 	statusText.textContent = '準備完了'
-
-	if (!window.ZXingBrowser) {
-		statusText.textContent = 'ZXingが読み込めていません'
-	}
 })
 
 gasTestBtn.addEventListener('click', async () => {
@@ -25,7 +23,6 @@ gasTestBtn.addEventListener('click', async () => {
 })
 
 scanBtn.addEventListener('click', async () => {
-	statusText.textContent = 'ボタンは反応しています'
 	await startScanner()
 })
 
@@ -46,6 +43,145 @@ manualSearchBtn.addEventListener('click', async () => {
 	await fetchProduct(barcode)
 })
 
+async function startScanner() {
+	stopScanner()
+
+	if ('BarcodeDetector' in window) {
+		statusText.textContent = 'BarcodeDetectorで読み取りを開始します'
+		await startBarcodeDetectorScanner()
+	} else {
+		statusText.textContent = 'ZXingで読み取りを開始します'
+		await startZxingScanner()
+	}
+}
+
+async function startBarcodeDetectorScanner() {
+	try {
+		isScanning = true
+		statusText.textContent = 'カメラ起動中...'
+
+		currentStream = await navigator.mediaDevices.getUserMedia({
+			video: {
+				facingMode: { ideal: 'environment' },
+				width: { ideal: 1280 },
+				height: { ideal: 720 },
+			},
+			audio: false,
+		})
+
+		video.srcObject = currentStream
+		await video.play()
+
+		const barcodeDetector = new BarcodeDetector({
+			formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code'],
+		})
+
+		statusText.textContent = '読み取り中... バーコードを中央に映してください'
+
+		const scanLoop = async () => {
+			if (!isScanning || !currentStream) return
+
+			try {
+				const barcodes = await barcodeDetector.detect(video)
+
+				if (barcodes.length > 0) {
+					const barcode = barcodes[0].rawValue
+
+					statusText.textContent = `読み取り成功：${barcode}`
+
+					stopScanner()
+					await fetchProduct(barcode)
+					return
+				}
+			} catch (error) {
+				console.error(error)
+			}
+
+			scanLoopId = requestAnimationFrame(scanLoop)
+		}
+
+		scanLoop()
+	} catch (error) {
+		console.error(error)
+		statusText.textContent = `エラー：${error.name} / ${error.message}`
+	}
+}
+
+async function startZxingScanner() {
+	try {
+		isScanning = true
+		statusText.textContent = 'カメラ起動中...'
+
+		if (!window.ZXingBrowser) {
+			statusText.textContent = 'ZXingが読み込めていません'
+			return
+		}
+
+		codeReader = new ZXingBrowser.BrowserMultiFormatReader()
+
+		const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices()
+
+		if (!devices || devices.length === 0) {
+			statusText.textContent = 'カメラが見つかりません'
+			return
+		}
+
+		const backCamera = devices.find((device) => {
+			const label = device.label.toLowerCase()
+
+			return label.includes('back') || label.includes('rear') || label.includes('environment') || label.includes('背面')
+		})
+
+		const selectedDeviceId = backCamera ? backCamera.deviceId : devices[devices.length - 1].deviceId
+
+		statusText.textContent = '読み取り中... バーコードを中央に映してください'
+
+		codeReader.decodeFromVideoDevice(selectedDeviceId, video, async (result, error) => {
+			if (!isScanning) return
+
+			if (result) {
+				const barcode = result.getText()
+
+				statusText.textContent = `読み取り成功：${barcode}`
+
+				stopScanner()
+				await fetchProduct(barcode)
+			}
+		})
+	} catch (error) {
+		console.error(error)
+		statusText.textContent = `エラー：${error.name} / ${error.message}`
+	}
+}
+
+function stopScanner() {
+	isScanning = false
+
+	if (scanLoopId) {
+		cancelAnimationFrame(scanLoopId)
+		scanLoopId = null
+	}
+
+	if (codeReader) {
+		try {
+			codeReader.reset()
+		} catch (error) {
+			console.log(error)
+		}
+
+		codeReader = null
+	}
+
+	if (currentStream) {
+		currentStream.getTracks().forEach((track) => track.stop())
+		currentStream = null
+	}
+
+	if (video) {
+		video.srcObject = null
+	}
+}
+
 async function testGasConnection() {
 	try {
 		statusText.textContent = 'GAS接続テスト中...'
@@ -64,86 +200,6 @@ async function testGasConnection() {
 	} catch (error) {
 		console.error(error)
 		statusText.textContent = `GAS接続エラー：${error.name} / ${error.message}`
-	}
-}
-
-async function startScanner() {
-	try {
-		statusText.textContent = 'カメラ起動中...'
-
-		if (!('BarcodeDetector' in window)) {
-			statusText.textContent = 'このブラウザはBarcodeDetectorに対応していません'
-			return
-		}
-
-		stopScanner()
-
-		currentStream = await navigator.mediaDevices.getUserMedia({
-			video: {
-				facingMode: { ideal: 'environment' },
-				width: { ideal: 1280 },
-				height: { ideal: 720 },
-			},
-			audio: false,
-		})
-
-		video.srcObject = currentStream
-		await video.play()
-
-		statusText.textContent = '読み取り中... バーコードを中央に映してください'
-
-		const barcodeDetector = new BarcodeDetector({
-			formats: ['ean_13', 'ean_8', 'code_128', 'qr_code'],
-		})
-
-		const scanLoop = async () => {
-			if (!currentStream) return
-
-			try {
-				const barcodes = await barcodeDetector.detect(video)
-
-				if (barcodes.length > 0) {
-					const barcode = barcodes[0].rawValue
-
-					statusText.textContent = `読み取り成功：${barcode}`
-
-					stopScanner()
-
-					await fetchProduct(barcode)
-					return
-				}
-			} catch (error) {
-				console.error(error)
-			}
-
-			requestAnimationFrame(scanLoop)
-		}
-
-		scanLoop()
-	} catch (error) {
-		console.error(error)
-		statusText.textContent = `エラー：${error.name} / ${error.message}`
-	}
-}
-
-function stopScanner() {
-	if (codeReader) {
-		try {
-			codeReader.reset()
-		} catch (error) {
-			console.log(error)
-		}
-
-		codeReader = null
-	}
-
-	if (currentStream) {
-		currentStream.getTracks().forEach((track) => track.stop())
-		currentStream = null
-	}
-
-	if (video) {
-		video.srcObject = null
 	}
 }
 
