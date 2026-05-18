@@ -76,24 +76,52 @@ async function startScanner() {
 	}
 }
 
-function stopScanner() {
-	if (codeReader) {
-		try {
-			codeReader.reset()
-		} catch (error) {
-			console.log(error)
+async function startScanner() {
+	try {
+		statusText.textContent = 'カメラ起動中...'
+
+		if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+			statusText.textContent = 'このブラウザはカメラに対応していません'
+			return
 		}
 
-		codeReader = null
-	}
+		if (!window.ZXingBrowser) {
+			statusText.textContent = 'ZXingが読み込めていません'
+			return
+		}
 
-	if (currentStream) {
-		currentStream.getTracks().forEach((track) => track.stop())
-		currentStream = null
-	}
+		stopScanner()
 
-	if (video) {
-		video.srcObject = null
+		currentStream = await navigator.mediaDevices.getUserMedia({
+			video: {
+				facingMode: { ideal: 'environment' },
+				width: { ideal: 1280 },
+				height: { ideal: 720 },
+			},
+			audio: false,
+		})
+
+		video.srcObject = currentStream
+		await video.play()
+
+		statusText.textContent = '読み取り中... バーコードを中央に映してください'
+
+		codeReader = new ZXingBrowser.BrowserMultiFormatReader()
+
+		codeReader.decodeFromVideoElement(video, async (result, error) => {
+			if (result) {
+				const barcode = result.getText()
+
+				statusText.textContent = `読み取り成功：${barcode}`
+
+				stopScanner()
+
+				await fetchProduct(barcode)
+			}
+		})
+	} catch (error) {
+		console.error(error)
+		statusText.textContent = `エラー：${error.name} / ${error.message}`
 	}
 }
 
