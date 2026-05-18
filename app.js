@@ -83,23 +83,22 @@ async function startScanner() {
 
 		stopScanner()
 
-		currentStream = await navigator.mediaDevices.getUserMedia({
-			video: {
-				facingMode: { ideal: 'environment' },
-				width: { ideal: 1280 },
-				height: { ideal: 720 },
-			},
-			audio: false,
-		})
+		codeReader = new ZXingBrowser.BrowserMultiFormatReader()
 
-		video.srcObject = currentStream
-		await video.play()
+		const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices()
+
+		if (!devices || devices.length === 0) {
+			statusText.textContent = 'カメラが見つかりません'
+			return
+		}
+
+		const backCamera = devices.find((device) => device.label.toLowerCase().includes('back') || device.label.toLowerCase().includes('rear') || device.label.toLowerCase().includes('environment'))
+
+		const selectedDeviceId = backCamera ? backCamera.deviceId : devices[devices.length - 1].deviceId
 
 		statusText.textContent = '読み取り中... バーコードを中央に映してください'
 
-		codeReader = new ZXingBrowser.BrowserMultiFormatReader()
-
-		codeReader.decodeFromVideoElement(video, async (result, error) => {
+		codeReader.decodeFromVideoDevice(selectedDeviceId, video, async (result, error) => {
 			if (result) {
 				const barcode = result.getText()
 
