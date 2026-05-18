@@ -2,21 +2,16 @@
 <html lang="ja">
 
 <head>
-
 	<meta charset="UTF-8">
-
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 	<title>簡易POS</title>
 
-	<link rel="stylesheet" href="style.css">
-
+	<link rel="stylesheet" href="style.css?v=4">
 </head>
 
 <body>
-
 	<div class="app">
-
 		<h1>簡易POS</h1>
 
 		<button id="scanBtn">スキャン開始</button>
@@ -25,11 +20,18 @@
 
 		<p id="status">未読み取り</p>
 
-		<div id="productArea"></div>
+		<section id="productArea" class="box">
+			<p>商品を読み取ってください</p>
+		</section>
 
-		<script src="https://unpkg.com/@zxing/browser@latest"></script>
-		<script src="app.js"></script>
+		<section id="cartArea" class="box">
+			<h2>カート</h2>
+			<p>まだ商品はありません</p>
+		</section>
+	</div>
 
+	<script src="https://unpkg.com/@zxing/browser@latest"></script>
+	<script src="app.js?v=4"></script>
 </body>
 
 </html>
