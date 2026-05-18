@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+	<meta charset="UTF-8">
+
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<title>簡易POS</title>
+
+	<link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+	<div class="app">
+
+		<h1>簡易POS</h1>
+
+		<button id="scanBtn">
+			スキャン開始
+		</button>
+
+		<video id="video" autoplay muted playsinline></video>
+
+		<p id="status">
+			未読み取り
+		</p>
+
+		<div id="productArea"></div>
+
+		<div id="cartArea"></div>
+
+	</div>
+
+	<script src="https://unpkg.com/@zxing/browser@latest"></script>
+
+	<script src="app.js"></script>
+
+</body>
+
+</html>
